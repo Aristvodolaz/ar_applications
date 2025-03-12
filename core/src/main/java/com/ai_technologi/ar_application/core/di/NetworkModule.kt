@@ -11,6 +11,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
+import javax.inject.Named
 
 /**
  * Модуль Hilt для настройки сетевых компонентов.
@@ -20,10 +21,10 @@ import javax.inject.Singleton
 object NetworkModule {
 
     /**
-     * Базовый URL для NextCloud API.
-     * В реальном приложении должен быть получен из конфигурации или настроек.
+     * Базовый URL по умолчанию для NextCloud API.
+     * Будет использован, если не предоставлен URL из AuthModule.
      */
-    private const val BASE_URL = "https://nextcloud.example.com/"
+    private const val DEFAULT_BASE_URL = "https://nextcloud.example.com/"
 
     /**
      * Предоставляет экземпляр OkHttpClient для выполнения HTTP-запросов.
@@ -49,13 +50,17 @@ object NetworkModule {
      * Предоставляет экземпляр Retrofit для работы с REST API.
      *
      * @param okHttpClient клиент для выполнения HTTP-запросов
+     * @param baseUrl базовый URL из AuthModule или DEFAULT_BASE_URL, если не предоставлен
      * @return настроенный Retrofit
      */
     @Provides
     @Singleton
-    fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
+    fun provideRetrofit(
+        okHttpClient: OkHttpClient,
+        @Named("auth_base_url") baseUrl: String = DEFAULT_BASE_URL
+    ): Retrofit {
         return Retrofit.Builder()
-            .baseUrl(BASE_URL)
+            .baseUrl(baseUrl)
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

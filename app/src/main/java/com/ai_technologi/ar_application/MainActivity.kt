@@ -22,7 +22,6 @@ import com.ai_technologi.ar_application.core.ui.ARAdaptiveUIProvider
 import com.ai_technologi.ar_application.navigation.AppDestination
 import com.ai_technologi.ar_application.navigation.NavigationViewModel
 import com.ai_technologi.ar_application.ui.theme.Ar_applicationTheme
-import com.ai_technologi.ar_application.videocall.presentation.ui.VideoCallScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -60,7 +59,7 @@ fun AppNavigation(
     navigationViewModel: NavigationViewModel = hiltViewModel()
 ) {
     val startDestination by navigationViewModel.startDestination.collectAsState()
-    
+
     NavHost(
         navController = navController,
         startDestination = startDestination
@@ -75,9 +74,11 @@ fun AppNavigation(
                 }
             )
         }
+    }
+}
         
         // Экран списка пользователей
-        composable(AppDestination.UsersList.route) {
+//        composable(AppDestination.UsersList.route) {
             // TODO: Реализовать экран списка пользователей
             // UsersListScreen(
             //     onUserSelected = { userId ->
@@ -85,27 +86,27 @@ fun AppNavigation(
             //     }
             // )
             
-            // Временное решение для тестирования видеозвонка
-            VideoCallScreen(
-                userId = "test_user",
-                onCallEnded = {
-                    navController.popBackStack()
-                }
-            )
-        }
-        
-        // Экран видеозвонка
-        composable(
-            route = "${AppDestination.VideoCall.route}/{userId}",
-            arguments = AppDestination.VideoCall.arguments
-        ) { backStackEntry ->
-            val userId = backStackEntry.arguments?.getString("userId")
-            VideoCallScreen(
-                userId = userId,
-                onCallEnded = {
-                    navController.popBackStack()
-                }
-            )
-        }
-    }
-}
+//            // Временное решение для тестирования видеозвонка
+//            VideoCallScreen(
+//                userId = "test_user",
+//                onCallEnded = {
+//                    navController.popBackStack()
+//                }
+//            )
+//        }
+//
+//        // Экран видеозвонка
+//        composable(
+//            route = "${AppDestination.VideoCall.route}/{userId}",
+//            arguments = AppDestination.VideoCall.arguments
+//        ) { backStackEntry ->
+//            val userId = backStackEntry.arguments?.getString("userId")
+//            VideoCallScreen(
+//                userId = userId,
+//                onCallEnded = {
+//                    navController.popBackStack()
+//                }
+//            )
+//        }
+//    }
+//}

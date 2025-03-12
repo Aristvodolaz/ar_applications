@@ -71,6 +71,9 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import org.webrtc.SurfaceViewRenderer
+import com.ai_technologi.ar_application.core.ui.ARConfig
+import com.ai_technologi.ar_application.core.ui.VideoCallPermissionsScreen
+import com.ai_technologi.ar_application.videocall.data.model.Annotation
 
 /**
  * Экран видеозвонка.
@@ -93,7 +96,7 @@ fun VideoCallScreen(
         val snackbarHostState = remember { SnackbarHostState() }
         val context = LocalContext.current
         val lifecycleOwner = LocalLifecycleOwner.current
-        val config = LocalARAdaptiveUIConfig.current
+        val config = LocalARAdaptiveUIConfig.current?.config
         val isARDevice = config?.isARDevice ?: DeviceUtils.isRokidDevice(context)
         
         // Инициализация менеджера жестов
@@ -198,9 +201,23 @@ fun VideoCallScreen(
                     when (state) {
                         is VideoCallState.Initial -> {
                             // Начальное состояние
-                            ARLoadingIndicator(
-                                text = "Подготовка к звонку..."
-                            )
+                            if (!hasCameraPermission || !hasMicrophonePermission) {
+                                VideoCallPermissionsScreen(
+                                    onRequestPermissions = {
+                                        permissionsLauncher.launch(
+                                            arrayOf(
+                                                Manifest.permission.CAMERA,
+                                                Manifest.permission.RECORD_AUDIO
+                                            )
+                                        )
+                                    },
+                                    config = config
+                                )
+                            } else {
+                                ARLoadingIndicator(
+                                    text = "Подготовка к звонку..."
+                                )
+                            }
                         }
                         
                         is VideoCallState.Loading -> {
@@ -395,7 +412,7 @@ fun VideoCallScreen(
                                     ) {
                                         Text(
                                             text = "Свайп влево: микрофон | Свайп вправо: камера | Двойное нажатие: завершить",
-                                            style = config?.mediumTextStyle ?: MaterialTheme.typography.bodyMedium,
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = config?.mediumFontSize ?: MaterialTheme.typography.bodyMedium.fontSize),
                                             color = Color.White
                                         )
                                     }
@@ -417,7 +434,7 @@ fun VideoCallScreen(
                                 
                                 Text(
                                     text = "Длительность: ${formatDuration(endedState.duration)}",
-                                    style = config?.largeTextStyle ?: MaterialTheme.typography.bodyLarge,
+                                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = config?.largeFontSize ?: MaterialTheme.typography.bodyLarge.fontSize),
                                     textAlign = TextAlign.Center
                                 )
                                 
@@ -445,8 +462,10 @@ fun VideoCallScreen(
                                 
                                 Text(
                                     text = errorState.message,
-                                    style = config?.largeTextStyle?.copy(color = Color.Red) 
-                                        ?: MaterialTheme.typography.bodyLarge.copy(color = Color.Red),
+                                    style = MaterialTheme.typography.bodyLarge.copy(
+                                        fontSize = config?.largeFontSize ?: MaterialTheme.typography.bodyLarge.fontSize,
+                                        color = Color.Red
+                                    ),
                                     textAlign = TextAlign.Center,
                                     modifier = Modifier.padding(horizontal = 32.dp)
                                 )

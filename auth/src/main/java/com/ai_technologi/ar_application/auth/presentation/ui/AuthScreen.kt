@@ -1,8 +1,12 @@
 package com.ai_technologi.ar_application.auth.presentation.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -22,9 +26,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.ai_technologi.ar_application.auth.domain.model.AuthIntent
 import com.ai_technologi.ar_application.auth.domain.model.AuthState
 import com.ai_technologi.ar_application.auth.presentation.viewmodel.AuthViewModel
+import com.ai_technologi.ar_application.core.ui.ARAdaptiveUIProvider
+import com.ai_technologi.ar_application.core.ui.ARButton
+import com.ai_technologi.ar_application.core.ui.ARHeading
+import com.ai_technologi.ar_application.core.ui.ARLoadingIndicator
+import com.ai_technologi.ar_application.core.ui.LocalARAdaptiveUIConfig
 
 /**
- * Главный экран аутентификации.
+ * Экран аутентификации.
  *
  * @param onAuthSuccess колбэк, вызываемый при успешной аутентификации
  * @param viewModel ViewModel для экрана аутентификации
@@ -34,91 +43,90 @@ fun AuthScreen(
     onAuthSuccess: () -> Unit,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
-    val state by viewModel.state.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
-    
-    // Обработка ошибок
-    LaunchedEffect(state) {
-        if (state is AuthState.Error) {
-            snackbarHostState.showSnackbar(
-                message = (state as AuthState.Error).message
-            )
-            viewModel.processIntent(AuthIntent.Reset)
+    ARAdaptiveUIProvider {
+        val config = LocalARAdaptiveUIConfig.current
+        val state by viewModel.state.collectAsState()
+        val snackbarHostState = remember { SnackbarHostState() }
+        
+        // Обработка успешной аутентификации
+        LaunchedEffect(state) {
+            if (state is AuthState.Success) {
+                onAuthSuccess()
+            }
         }
-    }
-    
-    // Обработка успешной аутентификации
-    LaunchedEffect(state) {
-        if (state is AuthState.Authenticated) {
-            onAuthSuccess()
+        
+        // Обработка ошибок
+        LaunchedEffect(state) {
+            if (state is AuthState.Error) {
+                snackbarHostState.showSnackbar(
+                    message = (state as AuthState.Error).message
+                )
+                viewModel.processIntent(AuthIntent.Reset)
+            }
         }
-    }
-    
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentAlignment = Alignment.Center
-        ) {
-            when (state) {
-                is AuthState.Initial -> {
-                    // Начальный экран с кнопкой для начала сканирования QR-кода
-                    InitialAuthScreen(
-                        onStartScan = {
-                            viewModel.processIntent(AuthIntent.StartQrScan)
-                        }
-                    )
-                }
-                
-                is AuthState.ScanningQrCode -> {
-                    // Экран сканирования QR-кода
-                    QrScanScreen(
-                        onQrCodeScanned = { qrToken ->
-                            viewModel.processIntent(AuthIntent.QrScanned(qrToken))
-                        }
-                    )
-                }
-                
-                is AuthState.QrScanned -> {
-                    // Переход к вводу PIN-кода
-                    viewModel.processIntent(AuthIntent.EnterPin(""))
-                }
-                
-                is AuthState.EnteringPin -> {
-                    // Экран ввода PIN-кода
-                    val enteringPinState = state as AuthState.EnteringPin
-                    PinEntryScreen(
-                        pin = enteringPinState.pin,
-                        onPinChanged = { newPin ->
-                            viewModel.processIntent(AuthIntent.EnterPin(newPin))
-                        },
-                        onPinConfirmed = {
-                            viewModel.processIntent(AuthIntent.ConfirmPin)
-                        }
-                    )
-                }
-                
-                is AuthState.Loading -> {
-                    // Индикатор загрузки
-                    CircularProgressIndicator()
-                }
-                
-                is AuthState.Authenticated -> {
-                    // Ничего не отображаем, будет выполнен переход на главный экран
-                }
-                
-                is AuthState.Error -> {
-                    // Ошибка отображается через Snackbar
-                    Text(
-                        text = "Произошла ошибка. Попробуйте еще раз.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(16.dp)
-                    )
+        
+        // При запуске экрана сразу переходим к сканированию QR-кода
+        LaunchedEffect(Unit) {
+            if (state is AuthState.Initial) {
+                viewModel.processIntent(AuthIntent.StartScanLogin)
+            }
+        }
+        
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                when (state) {
+                    is AuthState.Initial -> {
+                        // Начальный экран (не должен отображаться, так как сразу переходим к сканированию)
+                        ARLoadingIndicator(text = "Подготовка к сканированию...")
+                    }
+                    
+                    is AuthState.ScanLogin -> {
+                        // Экран сканирования QR-кода
+                        ScanLoginScreen(
+                            onLoginScanned = { login ->
+                                viewModel.processIntent(AuthIntent.SetLogin(login))
+                            },
+                            onBackClick = {
+                                viewModel.processIntent(AuthIntent.Reset)
+                            }
+                        )
+                    }
+                    
+                    is AuthState.EnterPin -> {
+                        // Экран ввода PIN-кода
+                        val login = (state as AuthState.EnterPin).login
+                        EnterPinScreen(
+                            login = login,
+                            onPinEntered = { pin ->
+                                viewModel.processIntent(AuthIntent.AuthenticateWithPin(login, pin))
+                            },
+                            onBackClick = {
+                                viewModel.processIntent(AuthIntent.Reset)
+                            }
+                        )
+                    }
+                    
+                    is AuthState.Loading -> {
+                        // Экран загрузки
+                        ARLoadingIndicator(text = "Выполняется вход...")
+                    }
+                    
+                    is AuthState.Success -> {
+                        // Успешная аутентификация
+                        // Ничего не отображаем, так как будет выполнен переход на следующий экран
+                    }
+                    
+                    is AuthState.Error -> {
+                        // Ошибка аутентификации
+                        // Отображается снэкбар с ошибкой и возвращаемся к начальному экрану
+                    }
                 }
             }
         }

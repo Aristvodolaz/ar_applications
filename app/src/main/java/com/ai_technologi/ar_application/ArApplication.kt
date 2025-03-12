@@ -3,6 +3,7 @@ package com.ai_technologi.ar_application
 import android.app.Application
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
+import com.ai_technologi.ar_application.BuildConfig
 
 /**
  * Основной класс приложения.

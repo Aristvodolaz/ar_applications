@@ -1,93 +1,128 @@
 package com.ai_technologi.ar_application.auth.data.repository
 
-import com.ai_technologi.ar_application.core.data.SessionManager
-import com.ai_technologi.ar_application.core.network.ApiResult
-import com.ai_technologi.ar_application.core.network.NextCloudApi
-import com.ai_technologi.ar_application.core.network.models.AuthConfirmResponse
-import com.ai_technologi.ar_application.core.network.models.AuthResponse
-import timber.log.Timber
+import android.content.SharedPreferences
+import com.ai_technologi.ar_application.auth.data.api.NextcloudAuthApi
+import com.ai_technologi.ar_application.auth.data.model.AuthRequest
+import com.ai_technologi.ar_application.auth.domain.repository.AuthRepository
+import com.ai_technologi.ar_application.core.util.ApiResult
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import retrofit2.HttpException
+import java.io.IOException
 import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
- * Реализация репозитория для работы с аутентификацией.
+ * Реализация репозитория для аутентификации.
  *
- * @param api API для работы с NextCloud
- * @param sessionManager менеджер сессии для хранения данных пользователя
+ * @param api API для аутентификации
+ * @param sharedPreferences хранилище для токена аутентификации
  */
+@Singleton
 class AuthRepositoryImpl @Inject constructor(
-    private val api: NextCloudApi,
-    private val sessionManager: SessionManager
+    private val api: NextcloudAuthApi,
+    private val sharedPreferences: SharedPreferences
 ) : AuthRepository {
-
+    
+    companion object {
+        private const val KEY_AUTH_TOKEN = "auth_token"
+        private const val KEY_SERVER_URL = "server_url"
+        private const val KEY_LOGIN_NAME = "login_name"
+        private const val NEXTCLOUD_BASE_URL = "https://nextcloud.sitebill.site"
+    }
+    
     /**
-     * Аутентификация по QR-коду.
+     * Аутентификация пользователя через PIN-код.
      *
-     * @param qrToken токен из QR-кода
+     * @param login логин пользователя
+     * @param pin PIN-код пользователя
      * @return результат аутентификации
      */
-    override suspend fun authenticateWithQrCode(qrToken: String): ApiResult<AuthResponse> {
-        return try {
-            val response = api.authenticateWithQrCode(qrToken)
-            if (response.isSuccessful && response.body() != null) {
-                val authResponse = response.body()!!.ocs.data
-                ApiResult.Success(authResponse)
-            } else {
-                Timber.e("Ошибка аутентификации: ${response.errorBody()?.string()}")
-                ApiResult.Error(message = "Ошибка аутентификации")
+    override suspend fun authenticateWithPin(login: String, pin: String): ApiResult<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val request = AuthRequest(login, pin)
+                val response = api.authenticateWithPin(request)
+                
+                // Сохраняем данные аутентификации
+                saveAuthToken(response.appPassword)
+                saveServerUrl(response.server)
+                saveLoginName(response.loginName)
+                
+                ApiResult.Success(response.appPassword)
+            } catch (e: HttpException) {
+                ApiResult.Error("Ошибка сервера: ${e.code()}")
+            } catch (e: IOException) {
+                ApiResult.Error("Ошибка сети: ${e.message}")
+            } catch (e: Exception) {
+                ApiResult.Error("Неизвестная ошибка: ${e.message}")
             }
-        } catch (e: Exception) {
-            Timber.e(e, "Ошибка при аутентификации по QR-коду")
-            ApiResult.Error(e, "Ошибка при аутентификации: ${e.message}")
         }
     }
-
-    /**
-     * Подтверждение аутентификации с помощью PIN-кода.
-     *
-     * @param token токен доступа
-     * @param pin PIN-код
-     * @return результат подтверждения
-     */
-    override suspend fun confirmWithPin(token: String, pin: String): ApiResult<AuthConfirmResponse> {
-        return try {
-            val response = api.confirmWithPin("Bearer $token", pin)
-            if (response.isSuccessful && response.body() != null) {
-                val confirmResponse = response.body()!!.ocs.data
-                ApiResult.Success(confirmResponse)
-            } else {
-                Timber.e("Ошибка подтверждения PIN-кода: ${response.errorBody()?.string()}")
-                ApiResult.Error(message = "Неверный PIN-код")
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Ошибка при подтверждении PIN-кода")
-            ApiResult.Error(e, "Ошибка при подтверждении: ${e.message}")
-        }
-    }
-
+    
     /**
      * Сохранение токена аутентификации.
      *
-     * @param token токен доступа
+     * @param token токен аутентификации
      */
     override suspend fun saveAuthToken(token: String) {
-        sessionManager.saveAuthToken(token)
+        withContext(Dispatchers.IO) {
+            sharedPreferences.edit().putString(KEY_AUTH_TOKEN, token).apply()
+        }
     }
-
+    
     /**
-     * Сохранение информации о пользователе.
+     * Сохранение URL сервера.
      *
-     * @param userId ID пользователя
-     * @param userName имя пользователя
-     * @param userRole роль пользователя
+     * @param serverUrl URL сервера
      */
-    override suspend fun saveUserInfo(userId: String, userName: String, userRole: String) {
-        sessionManager.saveUserInfo(userId, userName, userRole)
+    private suspend fun saveServerUrl(serverUrl: String) {
+        withContext(Dispatchers.IO) {
+            sharedPreferences.edit().putString(KEY_SERVER_URL, serverUrl).apply()
+        }
     }
-
+    
     /**
-     * Очистка данных сессии.
+     * Сохранение имени пользователя.
+     *
+     * @param loginName имя пользователя
      */
-    override suspend fun clearSession() {
-        sessionManager.clearSession()
+    private suspend fun saveLoginName(loginName: String) {
+        withContext(Dispatchers.IO) {
+            sharedPreferences.edit().putString(KEY_LOGIN_NAME, loginName).apply()
+        }
+    }
+    
+    /**
+     * Получение токена аутентификации.
+     *
+     * @return токен аутентификации или null, если пользователь не аутентифицирован
+     */
+    override suspend fun getAuthToken(): String? {
+        return withContext(Dispatchers.IO) {
+            sharedPreferences.getString(KEY_AUTH_TOKEN, null)
+        }
+    }
+    
+    /**
+     * Проверка, аутентифицирован ли пользователь.
+     *
+     * @return true, если пользователь аутентифицирован, иначе false
+     */
+    override suspend fun isAuthenticated(): Boolean {
+        return getAuthToken() != null
+    }
+    
+    /**
+     * Выход из системы.
+     */
+    override suspend fun logout() {
+        withContext(Dispatchers.IO) {
+            sharedPreferences.edit()
+                .remove(KEY_AUTH_TOKEN)
+                .remove(KEY_SERVER_URL)
+                .remove(KEY_LOGIN_NAME)
+                .apply()
+        }
     }
 } 

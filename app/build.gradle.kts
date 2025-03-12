@@ -1,10 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.jetbrains.kotlin.android)
-    kotlin("kapt")
-    id("com.google.dagger.hilt.android")
-    id("com.google.gms.google-services") apply false
-    id("com.google.firebase.crashlytics") apply false
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.dagger.hilt)
+    alias(libs.plugins.kotlin.kapt)
 }
 
 android {
@@ -23,7 +21,9 @@ android {
             useSupportLibrary = true
         }
     }
-
+    buildFeatures {
+        buildConfig = true
+    }
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -57,8 +57,8 @@ dependencies {
     // Модули проекта
     implementation(project(":core"))
     implementation(project(":auth"))
-    implementation(project(":users"))
-    implementation(project(":videocall"))
+//    implementation(project(":users"))
+//    implementation(project(":videocall"))
 
     // AndroidX Core
     implementation(libs.androidx.core.ktx)
@@ -82,12 +82,13 @@ dependencies {
     
     // Splash Screen API
     implementation("androidx.core:core-splashscreen:1.0.1")
-    
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+
     // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:32.7.2"))
-    implementation("com.google.firebase:firebase-analytics")
-    implementation("com.google.firebase:firebase-crashlytics")
-    
+//    implementation(platform("com.google.firebase:firebase-bom:32.7.2"))
+//    implementation("com.google.firebase:firebase-analytics")
+//    implementation("com.google.firebase:firebase-crashlytics")
+//
     // Timber для логирования
     implementation("com.jakewharton.timber:timber:5.0.1")
     

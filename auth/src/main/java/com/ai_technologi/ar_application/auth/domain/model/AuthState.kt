@@ -1,55 +1,38 @@
 package com.ai_technologi.ar_application.auth.domain.model
 
-import com.ai_technologi.ar_application.core.mvi.MviState
-
 /**
- * Состояние экрана аутентификации.
+ * Модель состояния для экрана аутентификации.
  */
-sealed class AuthState : MviState {
+sealed class AuthState {
     /**
      * Начальное состояние.
      */
     object Initial : AuthState()
-
+    
+    /**
+     * Состояние сканирования логина.
+     */
+    object ScanLogin : AuthState()
+    
+    /**
+     * Состояние ввода PIN-кода.
+     *
+     * @param login логин пользователя
+     */
+    data class EnterPin(val login: String) : AuthState()
+    
     /**
      * Состояние загрузки.
      */
     object Loading : AuthState()
-
-    /**
-     * Состояние сканирования QR-кода.
-     */
-    object ScanningQrCode : AuthState()
-
-    /**
-     * Состояние после успешного сканирования QR-кода.
-     * Пользователь должен ввести PIN-код.
-     *
-     * @param token токен, полученный после сканирования QR-кода
-     */
-    data class QrScanned(val token: String) : AuthState()
-
-    /**
-     * Состояние ввода PIN-кода.
-     *
-     * @param token токен, полученный после сканирования QR-кода
-     * @param pin текущий введенный PIN-код
-     */
-    data class EnteringPin(val token: String, val pin: String = "") : AuthState()
-
+    
     /**
      * Состояние успешной аутентификации.
      *
-     * @param userId ID пользователя
-     * @param userName имя пользователя
-     * @param userRole роль пользователя
+     * @param token токен аутентификации
      */
-    data class Authenticated(
-        val userId: String,
-        val userName: String,
-        val userRole: String
-    ) : AuthState()
-
+    data class Success(val token: String) : AuthState()
+    
     /**
      * Состояние ошибки.
      *

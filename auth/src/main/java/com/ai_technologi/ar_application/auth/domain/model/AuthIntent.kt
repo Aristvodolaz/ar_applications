@@ -3,35 +3,31 @@ package com.ai_technologi.ar_application.auth.domain.model
 import com.ai_technologi.ar_application.core.mvi.MviIntent
 
 /**
- * Intent для экрана аутентификации.
+ * Модель интентов для экрана аутентификации.
  */
 sealed class AuthIntent : MviIntent {
     /**
-     * Intent для начала сканирования QR-кода.
+     * Интент для начала сканирования логина.
      */
-    object StartQrScan : AuthIntent()
-
+    object StartScanLogin : AuthIntent()
+    
     /**
-     * Intent для обработки результата сканирования QR-кода.
+     * Интент для установки логина.
      *
-     * @param qrToken токен из QR-кода
+     * @param login логин пользователя
      */
-    data class QrScanned(val qrToken: String) : AuthIntent()
-
+    data class SetLogin(val login: String) : AuthIntent()
+    
     /**
-     * Intent для ввода PIN-кода.
+     * Интент для аутентификации с PIN-кодом.
      *
-     * @param pin PIN-код
+     * @param login логин пользователя
+     * @param pin PIN-код пользователя
      */
-    data class EnterPin(val pin: String) : AuthIntent()
-
+    data class AuthenticateWithPin(val login: String, val pin: String) : AuthIntent()
+    
     /**
-     * Intent для подтверждения PIN-кода.
-     */
-    object ConfirmPin : AuthIntent()
-
-    /**
-     * Intent для сброса состояния аутентификации.
+     * Интент для сброса состояния.
      */
     object Reset : AuthIntent()
 } 

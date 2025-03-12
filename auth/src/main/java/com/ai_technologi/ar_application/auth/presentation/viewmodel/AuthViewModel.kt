@@ -1,127 +1,88 @@
 package com.ai_technologi.ar_application.auth.presentation.viewmodel
 
-import com.ai_technologi.ar_application.auth.data.repository.AuthRepository
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.ai_technologi.ar_application.auth.domain.model.AuthIntent
 import com.ai_technologi.ar_application.auth.domain.model.AuthState
-import com.ai_technologi.ar_application.core.mvi.MviViewModel
-import com.ai_technologi.ar_application.core.network.ApiResult
+import com.ai_technologi.ar_application.auth.domain.repository.AuthRepository
+import com.ai_technologi.ar_application.core.util.ApiResult
 import dagger.hilt.android.lifecycle.HiltViewModel
-import timber.log.Timber
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
  * ViewModel для экрана аутентификации.
  *
- * @param repository репозиторий для работы с аутентификацией
+ * @param authRepository репозиторий для аутентификации
  */
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val repository: AuthRepository
-) : MviViewModel<AuthState, AuthIntent>(AuthState.Initial) {
-
+    private val authRepository: AuthRepository
+) : ViewModel() {
+    
+    private val _state = MutableStateFlow<AuthState>(AuthState.Initial)
+    val state: StateFlow<AuthState> = _state.asStateFlow()
+    
+    init {
+        viewModelScope.launch {
+            if (authRepository.isAuthenticated()) {
+                val token = authRepository.getAuthToken() ?: ""
+                _state.value = AuthState.Success(token)
+            }
+        }
+    }
+    
     /**
-     * Обработка Intent.
+     * Обработка интентов.
      *
-     * @param intent Intent, который нужно обработать
+     * @param intent интент
      */
-    override suspend fun handleIntent(intent: AuthIntent) {
+    fun processIntent(intent: AuthIntent) {
         when (intent) {
-            is AuthIntent.StartQrScan -> handleStartQrScan()
-            is AuthIntent.QrScanned -> handleQrScanned(intent.qrToken)
-            is AuthIntent.EnterPin -> handleEnterPin(intent.pin)
-            is AuthIntent.ConfirmPin -> handleConfirmPin()
-            is AuthIntent.Reset -> handleReset()
+            is AuthIntent.StartScanLogin -> {
+                _state.value = AuthState.ScanLogin
+            }
+            
+            is AuthIntent.SetLogin -> {
+                _state.value = AuthState.EnterPin(intent.login)
+            }
+            
+            is AuthIntent.AuthenticateWithPin -> {
+                authenticateWithPin(intent.login, intent.pin)
+            }
+            
+            is AuthIntent.Reset -> {
+                _state.value = AuthState.Initial
+            }
         }
     }
-
+    
     /**
-     * Обработка Intent для начала сканирования QR-кода.
-     */
-    private fun handleStartQrScan() {
-        updateState { AuthState.ScanningQrCode }
-    }
-
-    /**
-     * Обработка Intent для обработки результата сканирования QR-кода.
+     * Аутентификация с PIN-кодом.
      *
-     * @param qrToken токен из QR-кода
+     * @param login логин пользователя
+     * @param pin PIN-код пользователя
      */
-    private suspend fun handleQrScanned(qrToken: String) {
-        updateState { AuthState.Loading }
-        
-        when (val result = repository.authenticateWithQrCode(qrToken)) {
-            is ApiResult.Success -> {
-                val token = result.data.token
-                repository.saveAuthToken(token)
-                updateState { AuthState.QrScanned(token) }
-            }
-            is ApiResult.Error -> {
-                Timber.e("Ошибка аутентификации: ${result.message}")
-                updateState { AuthState.Error(result.message) }
-            }
-            is ApiResult.Loading -> {
-                // Ничего не делаем, уже в состоянии Loading
-            }
-        }
-    }
-
-    /**
-     * Обработка Intent для ввода PIN-кода.
-     *
-     * @param pin PIN-код
-     */
-    private fun handleEnterPin(pin: String) {
-        val currentState = state.value
-        if (currentState is AuthState.QrScanned) {
-            updateState { AuthState.EnteringPin(currentState.token, pin) }
-        } else if (currentState is AuthState.EnteringPin) {
-            updateState { currentState.copy(pin = pin) }
-        }
-    }
-
-    /**
-     * Обработка Intent для подтверждения PIN-кода.
-     */
-    private suspend fun handleConfirmPin() {
-        val currentState = state.value
-        if (currentState !is AuthState.EnteringPin) {
-            return
-        }
-
-        updateState { AuthState.Loading }
-        
-        when (val result = repository.confirmWithPin(currentState.token, currentState.pin)) {
-            is ApiResult.Success -> {
-                val response = result.data
-                if (response.success && response.user != null) {
-                    val user = response.user
-                    repository.saveUserInfo(user.id, user.displayName, user.role)
-                    updateState { 
-                        AuthState.Authenticated(
-                            userId = user.id,
-                            userName = user.displayName,
-                            userRole = user.role
-                        ) 
-                    }
-                } else {
-                    updateState { AuthState.Error("Неверный PIN-код") }
+    private fun authenticateWithPin(login: String, pin: String) {
+        viewModelScope.launch {
+            _state.value = AuthState.Loading
+            
+            when (val result = authRepository.authenticateWithPin(login, pin)) {
+                is ApiResult.Success -> {
+                    _state.value = AuthState.Success(result.data)
+                }
+                
+                is ApiResult.Error -> {
+                    _state.value = AuthState.Error(result.message)
+                }
+                
+                is ApiResult.Loading -> {
+                    // Уже установлено выше
                 }
             }
-            is ApiResult.Error -> {
-                Timber.e("Ошибка подтверждения PIN-кода: ${result.message}")
-                updateState { AuthState.Error(result.message) }
-            }
-            is ApiResult.Loading -> {
-                // Ничего не делаем, уже в состоянии Loading
-            }
         }
-    }
-
-    /**
-     * Обработка Intent для сброса состояния аутентификации.
-     */
-    private suspend fun handleReset() {
-        repository.clearSession()
-        updateState { AuthState.Initial }
     }
 } 

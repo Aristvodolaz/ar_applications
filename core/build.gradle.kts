@@ -1,9 +1,10 @@
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.jetbrains.kotlin.android)
-    kotlin("kapt")
-    id("com.google.dagger.hilt.android")
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.dagger.hilt)
+    alias(libs.plugins.kotlin.kapt)
 }
+
 
 android {
     namespace = "com.ai_technologi.ar_application.core"
@@ -12,7 +13,6 @@ android {
     defaultConfig {
         minSdk = 24
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles("consumer-rules.pro")
     }
 
     buildTypes {
@@ -37,6 +37,20 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.1"
     }
+    
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+        
+        // Решение проблемы с дублирующимися нативными библиотеками
+        jniLibs {
+            pickFirsts += setOf(
+                "**/libc++_shared.so",
+                "**/libjingle_peerconnection_so.so"
+            )
+        }
+    }
 }
 
 dependencies {
@@ -54,7 +68,12 @@ dependencies {
     
     // Hilt for DI
     implementation("com.google.dagger:hilt-android:2.48")
+    implementation(libs.androidx.datastore.core.android)
     kapt("com.google.dagger:hilt-android-compiler:2.48")
+    
+    // DataStore Preferences
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+    implementation("androidx.datastore:datastore-preferences-core:1.0.0")
     
     // Retrofit for API calls
     implementation("com.squareup.retrofit2:retrofit:2.9.0")

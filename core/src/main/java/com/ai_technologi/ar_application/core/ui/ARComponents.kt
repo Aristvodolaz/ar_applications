@@ -108,8 +108,7 @@ fun ARIconButton(
             .size(if (config?.isARDevice == true) 64.dp else 48.dp)
             .clickable(enabled = enabled, onClick = onClick),
         shape = CircleShape,
-        color = if (config?.isARDevice == true) config.highContrastAccent else MaterialTheme.colorScheme.primary,
-        enabled = enabled
+        color = if (config?.isARDevice == true) config.highContrastAccent else MaterialTheme.colorScheme.primary
     ) {
         Box(
             contentAlignment = Alignment.Center

@@ -1,0 +1,4 @@
+<manifest package="com.ai_technologi.ar_application.auth"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Другие элементы манифеста -->
+</manifest>

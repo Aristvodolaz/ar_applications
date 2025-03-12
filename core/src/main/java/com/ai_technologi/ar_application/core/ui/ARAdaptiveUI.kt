@@ -2,6 +2,8 @@ package com.ai_technologi.ar_application.core.ui
 
 import android.content.Context
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -10,7 +12,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -25,6 +27,11 @@ import com.ai_technologi.ar_application.core.util.DeviceUtils
 class ARAdaptiveUIConfig(context: Context) {
     val isARDevice = DeviceUtils.isRokidDevice(context)
     val uiScale = DeviceUtils.getUIScale(context)
+    
+    // Конфигурация для использования в компонентах
+    val config = ARConfig(
+        isARDevice = isARDevice
+    )
     
     // Размеры элементов интерфейса
     val buttonSize = 56.dp * uiScale
@@ -161,9 +168,9 @@ fun getARPadding(basePadding: PaddingValues): PaddingValues {
     val config = LocalARAdaptiveUIConfig.current
     return if (config != null && config.isARDevice) {
         PaddingValues(
-            start = basePadding.calculateStartPadding(LocalDensity.current.layoutDirection) * config.uiScale,
+            start = basePadding.calculateStartPadding(LocalLayoutDirection.current) * config.uiScale,
             top = basePadding.calculateTopPadding() * config.uiScale,
-            end = basePadding.calculateEndPadding(LocalDensity.current.layoutDirection) * config.uiScale,
+            end = basePadding.calculateEndPadding(LocalLayoutDirection.current) * config.uiScale,
             bottom = basePadding.calculateBottomPadding() * config.uiScale
         )
     } else {
