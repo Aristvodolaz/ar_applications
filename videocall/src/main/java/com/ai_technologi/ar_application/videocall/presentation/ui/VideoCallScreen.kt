@@ -74,6 +74,10 @@ import org.webrtc.SurfaceViewRenderer
 import com.ai_technologi.ar_application.core.ui.ARConfig
 import com.ai_technologi.ar_application.core.ui.VideoCallPermissionsScreen
 import com.ai_technologi.ar_application.videocall.data.model.Annotation
+import com.ai_technologi.ar_application.core.util.CameraUtils
+import com.ai_technologi.ar_application.core.ui.CameraType
+import com.ai_technologi.ar_application.core.ui.CameraSelectorDialog
+import com.ai_technologi.ar_application.core.ui.CameraSwitchButton
 
 /**
  * Экран видеозвонка.
@@ -98,6 +102,19 @@ fun VideoCallScreen(
         val lifecycleOwner = LocalLifecycleOwner.current
         val config = LocalARAdaptiveUIConfig.current?.config
         val isARDevice = config?.isARDevice ?: DeviceUtils.isRokidDevice(context)
+        
+        // Получаем список доступных камер
+        val availableCameras = remember { CameraUtils.getAvailableCameras(context) }
+        
+        // Выбранная камера (по умолчанию - фронтальная, если доступна, иначе - основная)
+        var selectedCamera by remember { 
+            mutableStateOf(
+                if (availableCameras.contains(CameraType.FRONT)) CameraType.FRONT else CameraType.BACK
+            ) 
+        }
+        
+        // Диалог выбора камеры
+        var showCameraSelector by remember { mutableStateOf(false) }
         
         // Инициализация менеджера жестов
         val gestureManager = rememberVideoCallGestureManager(viewModel)
@@ -347,16 +364,16 @@ fun VideoCallScreen(
                                             modifier = Modifier.size(if (isARDevice) 80.dp else 64.dp)
                                         )
                                         
-                                        // Кнопка камеры
-                                        ARIconButton(
-                                            onClick = {
-                                                viewModel.processIntent(
-                                                    VideoCallIntent.ToggleCamera(!activeState.isCameraEnabled)
-                                                )
-                                            },
-                                            icon = if (activeState.isCameraEnabled) Icons.Default.Videocam else Icons.Default.VideocamOff,
-                                            contentDescription = "Камера"
-                                        )
+                                        // Кнопка переключения камеры (если доступно больше одной камеры)
+                                        if (availableCameras.size > 1) {
+                                            CameraSwitchButton(
+                                                onClick = { showCameraSelector = true },
+                                                modifier = Modifier
+                                                    .align(Alignment.BottomStart)
+                                                    .padding(16.dp),
+                                                config = config
+                                            )
+                                        }
                                     }
                                 }
                                 
@@ -482,6 +499,21 @@ fun VideoCallScreen(
                     }
                 }
             }
+        }
+        
+        // Отображаем диалог выбора камеры, если нужно
+        if (showCameraSelector && availableCameras.size > 1 && state.hasPermissions) {
+            CameraSelectorDialog(
+                availableCameras = availableCameras,
+                selectedCamera = selectedCamera,
+                onCameraSelected = { camera ->
+                    selectedCamera = camera
+                    // Переключаем камеру в WebRTC
+                    viewModel.switchCamera(camera)
+                },
+                onDismiss = { showCameraSelector = false },
+                config = config
+            )
         }
     }
 }

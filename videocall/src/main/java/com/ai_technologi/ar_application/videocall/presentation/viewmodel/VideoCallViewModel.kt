@@ -9,7 +9,9 @@ import com.ai_technologi.ar_application.videocall.domain.model.AnnotationType
 import com.ai_technologi.ar_application.videocall.domain.model.Point
 import com.ai_technologi.ar_application.videocall.domain.model.VideoCallIntent
 import com.ai_technologi.ar_application.videocall.domain.model.VideoCallState
+import com.ai_technologi.ar_application.core.ui.CameraType
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -386,6 +388,42 @@ class VideoCallViewModel @Inject constructor(
         super.onCleared()
         viewModelScope.launch {
             repository.release()
+        }
+    }
+
+    /**
+     * Переключение камеры
+     *
+     * @param cameraType тип камеры для переключения
+     */
+    fun switchCamera(cameraType: CameraType) {
+        viewModelScope.launch {
+            try {
+                // Сначала отключаем текущую камеру
+                webRTCClient.disableVideo()
+                
+                // Небольшая задержка для корректного переключения
+                delay(300)
+                
+                // Переключаем камеру в WebRTC клиенте
+                webRTCClient.switchCamera(cameraType.selector)
+                
+                // Если камера была включена, включаем её снова
+                if (_state.value.activeState?.isCameraEnabled == true) {
+                    webRTCClient.enableVideo()
+                }
+                
+                Timber.d("Камера переключена на ${cameraType.title}")
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка при переключении камеры")
+                
+                // В случае ошибки показываем уведомление
+                _state.update { currentState ->
+                    currentState.copy(
+                        snackbarMessage = "Ошибка при переключении камеры: ${e.localizedMessage}"
+                    )
+                }
+            }
         }
     }
 } 

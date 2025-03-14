@@ -34,7 +34,12 @@ import com.ai_technologi.ar_application.auth.presentation.util.QrCodeAnalyzer
 import com.ai_technologi.ar_application.auth.presentation.viewmodel.AuthViewModel
 import com.ai_technologi.ar_application.core.ui.ARAdaptiveUIProvider
 import com.ai_technologi.ar_application.core.ui.CameraPermissionScreen
+import com.ai_technologi.ar_application.core.ui.CameraSelectorDialog
+import com.ai_technologi.ar_application.core.ui.CameraSwitchButton
+import com.ai_technologi.ar_application.core.ui.CameraType
+import com.ai_technologi.ar_application.core.ui.CurrentCameraInfo
 import com.ai_technologi.ar_application.core.ui.LocalARAdaptiveUIConfig
+import com.ai_technologi.ar_application.core.util.CameraUtils
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -56,6 +61,19 @@ fun QrScanScreen(
         val lifecycleOwner = LocalLifecycleOwner.current
         val config = LocalARAdaptiveUIConfig.current?.config
         
+        // Получаем список доступных камер
+        val availableCameras = remember { CameraUtils.getAvailableCameras(context) }
+        
+        // Выбранная камера (по умолчанию - основная, если доступна, иначе - фронтальная)
+        var selectedCamera by remember { 
+            mutableStateOf(
+                if (availableCameras.contains(CameraType.BACK)) CameraType.BACK else CameraType.FRONT
+            ) 
+        }
+        
+        // Диалог выбора камеры
+        var showCameraSelector by remember { mutableStateOf(false) }
+        
         // Запрос разрешения на использование камеры
         val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
         var hasCameraPermission by remember { mutableStateOf(false) }
@@ -74,57 +92,89 @@ fun QrScanScreen(
             }
         }
         
+        // Состояние загрузки камеры
+        var isLoading by remember { mutableStateOf(true) }
+        
+        // Отображаем диалог выбора камеры, если нужно
+        if (showCameraSelector && availableCameras.size > 1) {
+            CameraSelectorDialog(
+                availableCameras = availableCameras,
+                selectedCamera = selectedCamera,
+                onCameraSelected = { camera ->
+                    selectedCamera = camera
+                    isLoading = true
+                },
+                onDismiss = { showCameraSelector = false },
+                config = config
+            )
+        }
+        
         Box(modifier = Modifier.fillMaxSize()) {
             if (hasCameraPermission) {
+                // Отображаем превью камеры
                 AndroidView(
-                    factory = { context ->
-                        val previewView = PreviewView(context).apply {
-                            scaleType = PreviewView.ScaleType.FILL_CENTER
+                    factory = { ctx ->
+                        val previewView = PreviewView(ctx)
+                        val preview = Preview.Builder().build()
+                        val selector = CameraUtils.getCameraSelectorForType(selectedCamera)
+                        
+                        preview.setSurfaceProvider(previewView.surfaceProvider)
+                        
+                        val imageAnalysis = ImageAnalysis.Builder()
+                            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                            .build()
+                        
+                        imageAnalysis.setAnalyzer(
+                            Executors.newSingleThreadExecutor(),
+                            QrCodeAnalyzer { result ->
+                                onQrCodeScanned(result)
+                            }
+                        )
+                        
+                        try {
+                            val cameraProvider = ProcessCameraProvider.getInstance(ctx).get()
+                            cameraProvider.unbindAll()
+                            cameraProvider.bindToLifecycle(
+                                lifecycleOwner,
+                                selector,
+                                preview,
+                                imageAnalysis
+                            )
+                            
+                            // Камера успешно запущена
+                            isLoading = false
+                            
+                        } catch (e: Exception) {
+                            Timber.e(e, "Ошибка при запуске камеры")
                         }
-                        
-                        val cameraExecutor = Executors.newSingleThreadExecutor()
-                        val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
-                        
-                        cameraProviderFuture.addListener({
-                            val cameraProvider = cameraProviderFuture.get()
-                            
-                            val preview = Preview.Builder().build().also {
-                                it.setSurfaceProvider(previewView.surfaceProvider)
-                            }
-                            
-                            val imageAnalyzer = ImageAnalysis.Builder()
-                                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                                .build()
-                                .also {
-                                    it.setAnalyzer(
-                                        cameraExecutor,
-                                        QrCodeAnalyzer { qrCode ->
-                                            Timber.d("QR код отсканирован: $qrCode")
-                                            onQrCodeScanned(qrCode)
-                                            cameraExecutor.shutdown()
-                                        }
-                                    )
-                                }
-                            
-                            try {
-                                cameraProvider.unbindAll()
-                                cameraProvider.bindToLifecycle(
-                                    lifecycleOwner,
-                                    CameraSelector.DEFAULT_BACK_CAMERA,
-                                    preview,
-                                    imageAnalyzer
-                                )
-                            } catch (e: Exception) {
-                                Timber.e(e, "Ошибка при привязке камеры")
-                            }
-                        }, ContextCompat.getMainExecutor(context))
                         
                         previewView
                     },
                     modifier = Modifier.fillMaxSize()
                 )
                 
-                // Инструкции для пользователя
+                // Кнопка переключения камеры (если доступно больше одной камеры)
+                if (availableCameras.size > 1) {
+                    CameraSwitchButton(
+                        onClick = { showCameraSelector = true },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(16.dp),
+                        config = config
+                    )
+                    
+                    // Информация о текущей камере
+                    CurrentCameraInfo(
+                        currentCamera = selectedCamera,
+                        onClick = { showCameraSelector = true },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(16.dp),
+                        config = config
+                    )
+                }
+                
+                // Текст с инструкцией
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -150,11 +200,11 @@ fun QrScanScreen(
             }
             
             // Индикатор загрузки
-            CircularProgressIndicator(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(16.dp)
-            )
+            if (isLoading && hasCameraPermission) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
         }
     }
 } 

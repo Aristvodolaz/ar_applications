@@ -69,6 +69,7 @@ dependencies {
     // Hilt for DI
     implementation("com.google.dagger:hilt-android:2.48")
     implementation(libs.androidx.datastore.core.android)
+    implementation(libs.androidx.camera.core)
     kapt("com.google.dagger:hilt-android-compiler:2.48")
     
     // DataStore Preferences
