@@ -83,6 +83,7 @@ dependencies {
     // Splash Screen API
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.datastore:datastore-preferences:1.0.0")
+    implementation("androidx.compose.material:material-icons-core:1.5.3")
 
     // Firebase
 //    implementation(platform("com.google.firebase:firebase-bom:32.7.2"))
