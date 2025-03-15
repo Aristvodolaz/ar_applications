@@ -35,52 +35,67 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.ai_technologi.ar_application.core.util.DeviceUtils
 
 /**
- * Кнопка, оптимизированная для AR-очков.
- * Имеет увеличенный размер и высокий контраст для лучшей видимости.
+ * Кнопка с адаптивным интерфейсом для AR-устройств
  *
  * @param onClick действие при нажатии
- * @param modifier модификатор
- * @param enabled включена ли кнопка
  * @param text текст кнопки
+ * @param modifier модификатор
+ * @param icon иконка (опционально)
+ * @param enabled включена ли кнопка
+ * @param config конфигурация UI для AR устройств
  */
 @Composable
 fun ARButton(
     onClick: () -> Unit,
+    text: String,
     modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
     enabled: Boolean = true,
-    text: String
+    config: ARConfig? = null
 ) {
-    val config = LocalARAdaptiveUIConfig.current
+    val context = LocalContext.current
+    val isARDevice = config?.isARDevice ?: DeviceUtils.isRokidDevice(context)
     
     Button(
         onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(if (config?.isARDevice == true) 64.dp else 48.dp),
+        modifier = modifier,
         enabled = enabled,
-        shape = RoundedCornerShape(if (config?.isARDevice == true) 16.dp else 8.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = config?.highContrastAccent ?: MaterialTheme.colorScheme.primary,
-            contentColor = Color.Black
-        ),
+        shape = RoundedCornerShape(if (isARDevice) 16.dp else 8.dp),
         contentPadding = PaddingValues(
-            horizontal = config?.mediumPadding ?: 16.dp,
-            vertical = config?.smallPadding ?: 8.dp
+            horizontal = if (isARDevice) 24.dp else 16.dp,
+            vertical = if (isARDevice) 16.dp else 12.dp
+        ),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (isARDevice) config?.highContrastAccent ?: MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary,
+            contentColor = if (isARDevice) Color.Black else MaterialTheme.colorScheme.onPrimary
         )
     ) {
-        Text(
-            text = text,
-            style = if (config?.isARDevice == true) {
-                config.largeTextStyle.copy(color = Color.Black, fontWeight = FontWeight.Bold)
-            } else {
-                MaterialTheme.typography.labelLarge
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(if (isARDevice) 28.dp else 20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
             }
-        )
+            
+            Text(
+                text = text,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontSize = config?.largeFontSize ?: MaterialTheme.typography.titleMedium.fontSize
+                )
+            )
+        }
     }
 }
 
@@ -310,62 +325,68 @@ fun ARListItem(
 }
 
 /**
- * Заголовок, оптимизированный для AR-очков.
+ * Заголовок с адаптивным интерфейсом для AR-устройств
  *
  * @param text текст заголовка
  * @param modifier модификатор
+ * @param config конфигурация UI для AR устройств
  */
 @Composable
 fun ARHeading(
     text: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    config: ARConfig? = null
 ) {
-    val config = LocalARAdaptiveUIConfig.current
+    val context = LocalContext.current
+    val isARDevice = config?.isARDevice ?: DeviceUtils.isRokidDevice(context)
     
     Text(
         text = text,
-        style = if (config?.isARDevice == true) {
-            config.headerTextStyle.copy(fontWeight = FontWeight.Bold)
-        } else {
-            MaterialTheme.typography.headlineMedium
-        },
-        modifier = modifier.fillMaxWidth(),
-        textAlign = TextAlign.Center
+        style = MaterialTheme.typography.headlineMedium.copy(
+            fontSize = config?.headerFontSize ?: MaterialTheme.typography.headlineMedium.fontSize
+        ),
+        color = if (isARDevice) Color.White else MaterialTheme.colorScheme.onBackground,
+        textAlign = TextAlign.Center,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = if (isARDevice) 16.dp else 8.dp)
     )
 }
 
 /**
- * Индикатор загрузки, оптимизированный для AR-очков.
+ * Индикатор загрузки с адаптивным интерфейсом для AR-устройств
  *
- * @param text текст индикатора (опционально)
+ * @param text текст (опционально)
  * @param modifier модификатор
+ * @param config конфигурация UI для AR устройств
  */
 @Composable
 fun ARLoadingIndicator(
     text: String? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    config: ARConfig? = null
 ) {
-    val config = LocalARAdaptiveUIConfig.current
+    val context = LocalContext.current
+    val isARDevice = config?.isARDevice ?: DeviceUtils.isRokidDevice(context)
     
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         androidx.compose.material3.CircularProgressIndicator(
-            modifier = Modifier.size(if (config?.isARDevice == true) 64.dp else 48.dp),
-            color = config?.highContrastAccent ?: MaterialTheme.colorScheme.primary,
-            strokeWidth = if (config?.isARDevice == true) 6.dp else 4.dp
+            color = if (isARDevice) config?.highContrastAccent ?: MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary,
+            strokeWidth = if (isARDevice) 4.dp else 2.dp
         )
         
         if (text != null) {
             Spacer(modifier = Modifier.height(16.dp))
+            
             Text(
                 text = text,
-                style = if (config?.isARDevice == true) {
-                    config.largeTextStyle
-                } else {
-                    MaterialTheme.typography.bodyLarge
-                },
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontSize = config?.largeFontSize ?: MaterialTheme.typography.bodyLarge.fontSize
+                ),
+                color = if (isARDevice) Color.White else MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center
             )
         }
