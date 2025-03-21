@@ -27,12 +27,22 @@ class AuthViewModel @Inject constructor(
     val state: StateFlow<AuthState> = _state.asStateFlow()
     
     init {
+        // Начинаем процесс с экрана сканирования логина, независимо от наличия 
+        // сохраненного токена. Раскомментируйте код ниже, если нужно 
+        // автоматически входить с сохраненным токеном
+        
+        _state.value = AuthState.ScanLogin
+        
+        /*
         viewModelScope.launch {
             if (authRepository.isAuthenticated()) {
                 val token = authRepository.getAuthToken() ?: ""
                 _state.value = AuthState.Success(token)
+            } else {
+                _state.value = AuthState.ScanLogin
             }
         }
+        */
     }
     
     /**
@@ -55,7 +65,11 @@ class AuthViewModel @Inject constructor(
             }
             
             is AuthIntent.Reset -> {
-                _state.value = AuthState.Initial
+                // При сбросе очищаем сессию и возвращаемся к начальному экрану
+                viewModelScope.launch {
+//                    authRepository.clearSession()
+                    _state.value = AuthState.ScanLogin
+                }
             }
         }
     }

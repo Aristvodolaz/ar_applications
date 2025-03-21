@@ -12,6 +12,7 @@
     
     <!-- Разрешения для работы с микрофоном -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     
     <!-- Разрешения для работы с хранилищем -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
@@ -22,6 +23,17 @@
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    
+    <!-- Разрешения для WebRTC (для видеозвонков) -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    
+    <!-- Дополнительные функции, которые нужны для WebRTC -->
+    <uses-feature android:name="android.hardware.camera" />
+    <uses-feature android:name="android.hardware.camera.autofocus" />
+    <uses-feature android:name="android.hardware.microphone" />
+    <uses-feature android:glEsVersion="0x00020000" android:required="true" />
 
     <application
         android:name=".ArApplication"
@@ -40,7 +52,7 @@
         <!-- Настройка для WebView -->
         <meta-data
             android:name="android.webkit.WebView.EnableSafeBrowsing"
-            android:value="true" />
+            android:value="false" />
             
         <activity
             android:name=".MainActivity"

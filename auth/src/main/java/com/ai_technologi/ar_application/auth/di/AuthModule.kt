@@ -11,8 +11,16 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import retrofit2.Retrofit
+import javax.inject.Qualifier
 import javax.inject.Singleton
 import javax.inject.Named
+
+/**
+ * Квалификатор для Auth SharedPreferences
+ */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class AuthPrefs
 
 /**
  * Модуль Hilt для аутентификации.
@@ -29,7 +37,7 @@ object AuthModule {
     @Provides
     @Singleton
     @Named("auth_base_url")
-    fun provideBaseUrl(): String = "https://nextcloud.sitebill.site/"
+    fun provideBaseUrl(): String = "https://ar.sitebill.site/"
     
     /**
      * Предоставляет API для аутентификации.
@@ -51,6 +59,7 @@ object AuthModule {
      */
     @Provides
     @Singleton
+    @AuthPrefs
     fun provideSharedPreferences(@ApplicationContext context: Context): SharedPreferences {
         return context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
     }
@@ -66,7 +75,7 @@ object AuthModule {
     @Singleton
     fun provideAuthRepository(
         api: NextcloudAuthApi,
-        sharedPreferences: SharedPreferences
+        @AuthPrefs sharedPreferences: SharedPreferences
     ): AuthRepository {
         return AuthRepositoryImpl(api, sharedPreferences)
     }

@@ -450,6 +450,53 @@ class WebRtcClient @Inject constructor(
         _remoteVideoTrackFlow.value = null
         _dataChannelFlow.value = null
     }
+    
+    /**
+     * Переключение камеры
+     *
+     * @param cameraId идентификатор камеры для переключения
+     */
+    fun switchCamera(cameraId: Int) {
+        try {
+            videoCapturer?.let { capturer ->
+                if (capturer is CameraVideoCapturer) {
+                    // Если передан специальный идентификатор для внешней камеры
+                    if (cameraId == -1) {
+                        // Получаем список доступных камер
+                        val cameraEnumerator = Camera2Enumerator(context)
+                        val deviceNames = cameraEnumerator.deviceNames
+                        
+                        // Ищем первую внешнюю камеру
+                        val externalCamera = deviceNames.firstOrNull { deviceName ->
+                            val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+                            val characteristics = cameraManager.getCameraCharacteristics(deviceName)
+                            val lensFacing = characteristics.get(CameraCharacteristics.LENS_FACING)
+                            
+                            // Если камера не фронтальная и не основная, считаем её внешней
+                            lensFacing != CameraMetadata.LENS_FACING_FRONT && 
+                            lensFacing != CameraMetadata.LENS_FACING_BACK
+                        }
+                        
+                        if (externalCamera != null) {
+                            capturer.switchCamera(null, externalCamera)
+                            Timber.d("Переключено на внешнюю камеру: $externalCamera")
+                        } else {
+                            Timber.e("Внешняя камера не найдена")
+                        }
+                    } else {
+                        // Переключаемся на камеру по идентификатору (фронтальная или основная)
+                        capturer.switchCamera(null, cameraId)
+                        Timber.d("Переключено на камеру с ID: $cameraId")
+                    }
+                }
+            } ?: run {
+                Timber.e("Не удалось переключить камеру: videoCapturer не инициализирован")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Ошибка при переключении камеры")
+            throw e
+        }
+    }
 }
 
 /**

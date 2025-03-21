@@ -54,12 +54,6 @@ data class UserInfo(
     @SerializedName("role") val role: String
 )
 
-/**
- * Ответ на запрос списка пользователей.
- */
-data class UsersResponse(
-    @SerializedName("users") val users: List<UserInfo>
-)
 
 /**
  * Ответ на запрос инициализации звонка.
